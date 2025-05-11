@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cinemood/screens/home_screen.dart'; // Your actual HomeScreen file
 
 class LoginFormScreen extends StatefulWidget {
   @override
@@ -24,11 +25,14 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
           password: passwordController.text.trim(),
         );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Login Successful")),
+        // ✅ Only this navigation is needed
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(userId: _auth.currentUser!.uid),
+          ),
         );
 
-        // TODO: Navigate to home screen or dashboard
       } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? 'Login failed')),
@@ -40,7 +44,8 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
   }
 
   void _showForgotPasswordDialog() {
-    final TextEditingController emailResetController = TextEditingController();
+    final emailResetController = TextEditingController(text: emailController.text);
+    final _dialogFormKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -48,19 +53,30 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
         return AlertDialog(
           backgroundColor: Color(0xFF2A2B33),
           title: Text("Reset Password", style: TextStyle(color: Colors.white)),
-          content: TextFormField(
-            controller: emailResetController,
-            style: TextStyle(color: Colors.white),
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              hintText: "Enter your email",
-              hintStyle: TextStyle(color: Colors.white54),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+          content: Form(
+            key: _dialogFormKey,
+            child: TextFormField(
+              controller: emailResetController,
+              style: TextStyle(color: Colors.white),
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: "Enter your email",
+                hintStyle: TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.purple),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.purple),
-              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Email is required";
+                } else if (!value.contains('@')) {
+                  return "Enter a valid email";
+                }
+                return null;
+              },
             ),
           ),
           actions: [
@@ -70,18 +86,20 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop();
-                try {
-                  await FirebaseAuth.instance.sendPasswordResetEmail(
-                    email: emailResetController.text.trim(),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Password reset email sent.")),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error: ${e.toString()}")),
-                  );
+                if (_dialogFormKey.currentState!.validate()) {
+                  Navigator.of(context).pop();
+                  try {
+                    await FirebaseAuth.instance.sendPasswordResetEmail(
+                      email: emailResetController.text.trim(),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Password reset email sent.")),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Error: ${e.toString()}")),
+                    );
+                  }
                 }
               },
               child: Text("Send"),
@@ -114,10 +132,7 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: _showForgotPasswordDialog,
-                  child: Text(
-                    "Forgot Password?",
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  child: Text("Forgot Password?", style: TextStyle(color: Colors.white70)),
                 ),
               ),
               isLoading

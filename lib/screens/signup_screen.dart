@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'genre_selection_screen.dart'; // ✅ make sure this import matches your project path
 
 class SignupScreen extends StatefulWidget {
   @override
@@ -19,13 +20,18 @@ class _SignupScreenState extends State<SignupScreen> {
   final dobController = TextEditingController();
   final List<String> genders = ['Male', 'Female', 'Other'];
 
-
   String? selectedCountry;
   String? selectedLanguage;
   String? selectedGender;
 
-  final List<String> countries = ['Jamaica', 'USA', 'Canada', 'UK', 'Trinidad', 'India', 'Nigeria', 'Kenya', 'Brazil', 'Germany'];
-  final List<String> languages = ['English', 'Spanish', 'French', 'Hindi', 'Mandarin', 'Swahili', 'Arabic', 'Portuguese'];
+  final List<String> countries = [
+    'Jamaica', 'USA', 'Canada', 'UK', 'Trinidad',
+    'India', 'Nigeria', 'Kenya', 'Brazil', 'Germany'
+  ];
+  final List<String> languages = [
+    'English', 'Spanish', 'French', 'Hindi', 'Mandarin',
+    'Swahili', 'Arabic', 'Portuguese'
+  ];
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -39,6 +45,7 @@ class _SignupScreenState extends State<SignupScreen> {
     dobController.dispose();
     super.dispose();
   }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate() &&
         agreeToTerms &&
@@ -46,13 +53,13 @@ class _SignupScreenState extends State<SignupScreen> {
         selectedCountry != null &&
         selectedLanguage != null) {
       try {
-        // Auth signup
+        // Create account
         UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text.trim(),
         );
 
-        // Save user data in Firestore
+        // Save basic user info
         await _firestore.collection('users').doc(userCredential.user!.uid).set({
           'full_name': fullNameController.text.trim(),
           'username': usernameController.text.trim(),
@@ -63,18 +70,21 @@ class _SignupScreenState extends State<SignupScreen> {
           'gender': selectedGender,
           'agreedToTerms': agreeToTerms,
           'created_at': Timestamp.now(),
+          'genres': [],              // <-- Placeholder for later genre selection
+          'liked_movies': [],
+          'watched_movies': [],
+          'mood': '',
         });
 
-
-
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signup Successful!")),
+        // ✅ Go to genre selection screen after signup
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GenreSelectionScreen(userId: userCredential.user!.uid),
+          ),
         );
-
-        // TODO: Navigate to login or home screen
-
       } on FirebaseAuthException catch (e) {
+        print("FirebaseAuth Error: ${e.code} - ${e.message}");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? 'Signup failed')),
         );
@@ -85,7 +95,6 @@ class _SignupScreenState extends State<SignupScreen> {
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -225,5 +234,4 @@ class _SignupScreenState extends State<SignupScreen> {
       ],
     );
   }
-
 }
